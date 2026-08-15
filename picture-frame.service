@@ -1,0 +1,18 @@
+[Unit]
+Description=Raspberry Pi Picture Frame Kiosk
+After=graphical.target
+Wants=graphical.target
+
+[Service]
+Type=simple
+User=pi
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/pi/.Xauthority
+Environment=TK_SILENCE_DEPRECATION=1
+WorkingDirectory=/home/pi/rpi-picture-frame
+ExecStart=/bin/bash -lc '/home/pi/rpi-picture-frame/.venv/bin/python /home/pi/rpi-picture-frame/app.py --photo-dir /home/pi/Pictures/frame --interval 30 --fade-ms 1200'
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target
