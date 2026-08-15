@@ -43,14 +43,27 @@ def parse_args():
     return parser.parse_args()
 
 
-def _collect_supported_photos(root: Path):
+def _collect_supported_photos(root: Path, max_depth: int = 3):
     photos = []
     if not root.exists() or not root.is_dir():
         return photos
 
-    for item in sorted(root.rglob("*")):
-        if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS:
-            photos.append(item)
+    queue = [(root, 0)]
+    while queue:
+        current, depth = queue.pop(0)
+        if depth > max_depth:
+            continue
+
+        try:
+            entries = sorted(current.iterdir(), key=lambda p: p.name.lower())
+        except OSError:
+            continue
+
+        for entry in entries:
+            if entry.is_dir() and depth < max_depth:
+                queue.append((entry, depth + 1))
+            elif entry.is_file() and entry.suffix.lower() in SUPPORTED_EXTENSIONS:
+                photos.append(entry)
 
     return photos
 
@@ -62,16 +75,17 @@ def find_photos(photo_dir: Path):
     if photo_dir.exists():
         candidates.append(photo_dir)
 
-    if photo_dir == Path("/media") or photo_dir.parent == Path("/media") or str(photo_dir).startswith("/media/"):
-        media_root = Path("/media")
-        if media_root.exists():
-            for mount in sorted(media_root.iterdir()):
-                if mount.is_dir():
-                    candidates.append(mount)
+    for media_root in (Path("/media"), Path("/mnt"), Path("/run/media")):
+        if not media_root.exists():
+            continue
+        for mount in sorted(media_root.iterdir(), key=lambda p: p.name.lower()):
+            if mount.is_dir():
+                candidates.append(mount)
 
-    for mount in sorted(Path("/mnt").glob("*")):
-        if mount.is_dir():
-            candidates.append(mount)
+    if photo_dir.name != "media" and photo_dir.name != "mnt":
+        for mount in sorted(Path("/media").glob("*"), key=lambda p: p.name.lower()):
+            if mount.is_dir() and mount not in candidates:
+                candidates.append(mount)
 
     seen = set()
     photos = []
@@ -79,8 +93,7 @@ def find_photos(photo_dir: Path):
         if candidate in seen:
             continue
         seen.add(candidate)
-        for image in _collect_supported_photos(candidate):
-            photos.append(image)
+        photos.extend(_collect_supported_photos(candidate, max_depth=2))
 
     if not photos:
         raise FileNotFoundError(f"No supported image files found in: {photo_dir} or mounted media folders")
@@ -193,6 +206,13 @@ class PhotoFrameApp:
         if self.refresh_job is not None:
             self.root.after_cancel(self.refresh_job)
             self.refresh_job = None
+
+        if not self.photos:
+            try:
+                self.photos = find_photos(self.photo_dir)
+            except FileNotFoundError:
+                self.root.after(5000, self.refresh_photo)
+                return
 
         if len(self.photos) == 1:
             selected = self.photos[0]
