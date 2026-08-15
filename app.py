@@ -60,10 +60,18 @@ def _collect_supported_photos(root: Path, max_depth: int = 3):
             continue
 
         for entry in entries:
+            if entry.name.startswith("."):
+                continue
+
             if entry.is_dir() and depth < max_depth:
                 queue.append((entry, depth + 1))
             elif entry.is_file() and entry.suffix.lower() in SUPPORTED_EXTENSIONS:
-                photos.append(entry)
+                try:
+                    with Image.open(entry) as img:
+                        img.verify()
+                    photos.append(entry)
+                except Exception:
+                    continue
 
     return photos
 
@@ -210,18 +218,38 @@ class PhotoFrameApp:
         if not self.photos:
             try:
                 self.photos = find_photos(self.photo_dir)
+                print(f"[photo-frame] Found {len(self.photos)} candidate images in {self.photo_dir}")
             except FileNotFoundError:
+                print(f"[photo-frame] No images found yet in {self.photo_dir}; retrying in 5s")
                 self.root.after(5000, self.refresh_photo)
                 return
 
-        if len(self.photos) == 1:
-            selected = self.photos[0]
+        attempts = 0
+        while attempts < len(self.photos):
+            if len(self.photos) == 1:
+                selected = self.photos[0]
+            else:
+                options = [p for p in self.photos if p != self.current_photo]
+                selected = random.choice(options or self.photos)
+
+            try:
+                next_image = self._load_display_image(selected)
+                print(f"[photo-frame] SUCCESS: loading {selected}")
+                break
+            except Exception as exc:
+                self.photos = [p for p in self.photos if p != selected]
+                print(f"[photo-frame] FAILURE: skipping unreadable file {selected} ({exc.__class__.__name__}: {exc})")
+                attempts += 1
+                if not self.photos:
+                    print(f"[photo-frame] No valid images left; retrying in 5s")
+                    self.root.after(5000, self.refresh_photo)
+                    return
         else:
-            options = [p for p in self.photos if p != self.current_photo]
-            selected = random.choice(options or self.photos)
+            print(f"[photo-frame] No usable images found; retrying in 5s")
+            self.root.after(5000, self.refresh_photo)
+            return
 
         self.current_photo = selected
-        next_image = self._load_display_image(selected)
 
         if self.current_image is None:
             self.current_image = next_image
@@ -232,6 +260,7 @@ class PhotoFrameApp:
         self.transitioning = True
         old_image = self.current_image
         self.current_image = next_image
+        print(f"[photo-frame] Transitioning from {old_image.name} to {selected.name}")
         self.fade_job = self.root.after(0, self._animate_fade, old_image, next_image, time.monotonic())
 
 
