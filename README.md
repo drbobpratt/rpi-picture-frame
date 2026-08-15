@@ -36,8 +36,10 @@ This project runs a fullscreen slideshow on a Raspberry Pi 5 with a connected 10
 4. Start the app:
 
    ```bash
-   python3 app.py --photo-dir ~/Pictures/frame --interval 30
+   python3 app.py --photo-dir /media --interval 30
    ```
+
+   This is the preferred option for a USB drive because Raspberry Pi often mounts removable media under `/media/<device>`.
 
 5. To stop the app, press `Esc` or close the window.
 
@@ -88,8 +90,10 @@ chmod +x ~/rpi-picture-frame/run.sh
 You can override the photo directory, interval, and fade timing while launching:
 
 ```bash
-python3 app.py --photo-dir /path/to/photos --interval 60 --fade-ms 1200
+python3 app.py --photo-dir /media --interval 60 --fade-ms 1200
 ```
+
+If your USB drive is mounted under a specific device folder, such as `/media/usb0`, it will also be discovered automatically.
 
 The `--fade-ms` option controls how long the crossfade lasts between photos. A value near `1200` is a smooth kiosk-friendly transition.
 

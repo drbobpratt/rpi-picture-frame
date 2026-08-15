@@ -19,8 +19,8 @@ def parse_args():
     parser.add_argument(
         "--photo-dir",
         type=str,
-        default="~/Pictures",
-        help="Folder containing photos to display. Defaults to ~/Pictures",
+        default="/media",
+        help="Folder or mount root containing photos. Defaults to /media so USB drives are detected reliably.",
     )
     parser.add_argument(
         "--interval",
@@ -43,17 +43,47 @@ def parse_args():
     return parser.parse_args()
 
 
-def find_photos(photo_dir: Path):
-    if not photo_dir.exists():
-        raise FileNotFoundError(f"Photo directory does not exist: {photo_dir}")
-
+def _collect_supported_photos(root: Path):
     photos = []
-    for item in sorted(photo_dir.iterdir()):
+    if not root.exists() or not root.is_dir():
+        return photos
+
+    for item in sorted(root.rglob("*")):
         if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS:
             photos.append(item)
 
+    return photos
+
+
+def find_photos(photo_dir: Path):
+    photo_dir = photo_dir.expanduser().resolve()
+    candidates = []
+
+    if photo_dir.exists():
+        candidates.append(photo_dir)
+
+    if photo_dir == Path("/media") or photo_dir.parent == Path("/media") or str(photo_dir).startswith("/media/"):
+        media_root = Path("/media")
+        if media_root.exists():
+            for mount in sorted(media_root.iterdir()):
+                if mount.is_dir():
+                    candidates.append(mount)
+
+    for mount in sorted(Path("/mnt").glob("*")):
+        if mount.is_dir():
+            candidates.append(mount)
+
+    seen = set()
+    photos = []
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        for image in _collect_supported_photos(candidate):
+            photos.append(image)
+
     if not photos:
-        raise FileNotFoundError(f"No supported image files found in: {photo_dir}")
+        raise FileNotFoundError(f"No supported image files found in: {photo_dir} or mounted media folders")
 
     return photos
 
