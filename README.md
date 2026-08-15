@@ -1,13 +1,13 @@
 # Raspberry Pi Picture Frame
 
-This project runs a fullscreen slideshow on a Raspberry Pi 5 with a connected 7" touchscreen. It scans a local folder of photos, randomly selects an image, and changes the display every 30 seconds.
+This project runs a fullscreen slideshow on a Raspberry Pi 5 with a connected 10" touchscreen. It scans a local folder of photos, randomly selects an image, and changes the display every 30 seconds.
 
 ## Features
 
 - Full-screen kiosk display
 - Random image selection from a local folder
 - 30-second slideshow interval by default
-- Works well with a Raspberry Pi 5 and 7" touchscreen
+- Works well with a Raspberry Pi 5 and 10" touchscreen
 - Easy to run from startup on boot
 
 ## Requirements
