@@ -261,7 +261,7 @@ class PhotoFrameApp:
         old_image = self.current_image
         self.current_image = next_image
         old_name = getattr(self.current_photo, "name", str(self.current_photo)) if self.current_photo is not None else "unknown"
-        print(f"[photo-frame] Transitioning from {old_name} to {selected.name}")
+        #print(f"[photo-frame] Transitioning from {old_name} to {selected.name}")
         self.fade_job = self.root.after(0, self._animate_fade, old_image, next_image, time.monotonic())
 
 
